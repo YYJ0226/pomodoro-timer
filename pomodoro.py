@@ -17,6 +17,22 @@ try:
 except ImportError:
     NOTIFICATION_AVAILABLE = False
 
+
+def parse_duration(text, label, maximum):
+    """Validate a duration without changing timer state."""
+    message = f"{label}时长请输入 1–{maximum} 分钟的整数（半角数字）。"
+    try:
+        value = text.strip()
+        if not value.isascii() or not value.isdecimal():
+            raise ValueError
+        minutes = int(value)
+        if not 1 <= minutes <= maximum:
+            raise ValueError
+    except ValueError:
+        raise ValueError(message) from None
+    return minutes * 60
+
+
 class PomodoroTimer:
     def __init__(self, root):
         self.root = root
@@ -300,14 +316,18 @@ class PomodoroTimer:
         self.update_display()
 
     def apply_settings(self):
-        """应用设置"""
+        """Validate both fields before applying either duration."""
         try:
-            self.work_time = int(self.work_spinbox.get()) * 60
-            self.short_break = int(self.break_spinbox.get()) * 60
-            self.reset_timer()
-            messagebox.showinfo("设置", "设置已应用！")
-        except ValueError:
-            messagebox.showerror("错误", "请输入有效的数字！")
+            work_time = parse_duration(self.work_spinbox.get(), "工作", 60)
+            short_break = parse_duration(self.break_spinbox.get(), "休息", 30)
+        except ValueError as error:
+            messagebox.showerror("设置未应用", str(error))
+            return
+
+        self.work_time = work_time
+        self.short_break = short_break
+        self.reset_timer()
+        messagebox.showinfo("设置", "设置已应用，当前计时已重置。")
 
     def play_alarm(self):
         """播放提示音"""
